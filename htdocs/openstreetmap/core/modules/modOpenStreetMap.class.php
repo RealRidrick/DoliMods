@@ -46,7 +46,7 @@ class modOpenStreetMap extends DolibarrModules
 		$this->editor_name = 'DoliCloud';
 		$this->editor_url = 'https://www.dolicloud.com?origin=dolimods';
 		// Possible values for version are: 'development', 'experimental', 'dolibarr' or version
-		$this->version = '4.0.4';
+		$this->version = '4.1.1';
 		// Key used in llx_const table to save module status enabled/disabled (where MYMODULE is value of property name of module in uppercase)
 		$this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
 		// Name of image file used for this module.
@@ -79,6 +79,7 @@ class modOpenStreetMap extends DolibarrModules
 		// Constants
 		$this->const = array(
 			0 => array('OPENSTREETMAP_PDOK_AUTOFILL', 'chaine', '1', 'Fill street and town of Dutch addresses from postcode and house number (PDOK)', 0, 'current', 0),
+			1 => array('OPENSTREETMAP_EU_AUTOFILL', 'chaine', '1', 'Other countries: town from postcode (Nominatim) and street suggestions (Photon)', 0, 'current', 0),
 		);
 
 		// Tabs
@@ -154,7 +155,8 @@ class modOpenStreetMap extends DolibarrModules
 			'url' => '/openstreetmap/maps_all.php?mode=contact',
 			'langs' => 'openstreetmap@openstreetmap',
 			'position' => 1000,
-			'enabled' => 'isModEnabled("openstreetmap") && isModEnabled("societe") && getDolGlobalString("OPENSTREETMAP_ENABLE_MAPS_CONTACTS")',
+			// Contacts usually share the address of their third party: entry shown only when asked in setup
+			'enabled' => 'isModEnabled("openstreetmap") && isModEnabled("societe") && getDolGlobalString("OPENSTREETMAP_ENABLE_MAPS_CONTACTS") && getDolGlobalString("OPENSTREETMAP_MENU_MAP_CONTACTS")',
 			'perms' => '$user->hasRight("societe", "contact", "lire")',
 			'target' => '',
 			'user' => 0
