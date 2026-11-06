@@ -11,6 +11,6 @@ jobs:
     steps:
       - name: master bijwerken vanuit DoliCloud/DoliMods
         env:
-          GH_TOKEN: ${{ secrets.FORK_SYNC_TOKEN }}
+          GH_TOKEN: ${{ secrets.FORK_SYNC_DOLIMODS }}
         run: |
           gh repo sync "$GITHUB_REPOSITORY" --branch master
