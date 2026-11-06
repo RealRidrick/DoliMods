@@ -1,0 +1,16 @@
+name: Fork bijwerken met DoliMods
+on:
+  schedule:
+    - cron: '27 3 * * *'   # elke nacht om 03:27 UTC
+  workflow_dispatch:        # ook met de hand te starten
+permissions:
+  contents: write
+jobs:
+  bijwerken:
+    runs-on: ubuntu-latest
+    steps:
+      - name: master bijwerken vanuit DoliCloud/DoliMods
+        env:
+          GH_TOKEN: ${{ secrets.FORK_SYNC_TOKEN }}
+        run: |
+          gh repo sync "$GITHUB_REPOSITORY" --branch master
