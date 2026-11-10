@@ -6,7 +6,7 @@
 # to push on PRs from forks (GITHUB_TOKEN can't push on a fork). Without it, PRs from forks are skipped
 # and only PRs whose branch is in this repository are processed. The fix pushed with it also starts the CI of the
 # PR at once, while a fix pushed with GITHUB_TOKEN waits for the approval of a maintainer ("Approve and run" button).
-name: "Mistral - Fix CI of oldest PR"
+name: "Mistral - Fix oldest PR in error"
 
 on:
   workflow_dispatch:
@@ -18,7 +18,7 @@ on:
       model:
         description: "Mistral model"
         required: false
-        default: "mistral-large-latest"
+        default: "devstral-medium-latest"
         type: string
   # Every day at 23:00 Paris time in winter (CET), 00:00 in summer (cron is in UTC)
   schedule:
@@ -36,13 +36,17 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  FAILED_LABEL: ai-ci-fix-failed
+  # Directory with one subdirectory per module (empty = the repository is a single module)
+  MODULES_DIR: "htdocs"
+  FAILED_LABEL: ai-pr-failed
+  # Dolibarr core the fix is checked against with PHPStan (oldest version supported by the modules)
+  DOLIBARR_CORE: "18.0.0"
   # Checks that can't be fixed by a change of code
   IGNORED_CHECKS: "Check PR quota per user,Check PR title and description"
 
 jobs:
   fix-pr-ci:
-    name: Fix CI of oldest PR with Mistral
+    name: Fix oldest PR in CI error with Mistral
     runs-on: ubuntu-latest
     steps:
       # The scripts are always taken from the branch of the workflow, never from the PR
@@ -50,9 +54,26 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+
+      # Only the first 8 chars of each token are shown, to check which secret is used
+      - name: Show configuration
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          AI_PUSH_TOKEN: ${{ secrets.AI_PUSH_TOKEN }}
+          MISTRAL_MODEL: ${{ inputs.model }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: |
+          for v in GITHUB_TOKEN MISTRAL_API_KEY AI_PUSH_TOKEN; do
+            val="${!v}"
+            if [ -n "$val" ]; then echo "$v=${val:0:8}... (${#val} chars)"; else echo "$v=(empty)"; fi
+          done
+          for v in GITHUB_EVENT_NAME GITHUB_REPOSITORY GITHUB_REF_NAME MISTRAL_MODEL PR_NUMBER MODULES_DIR FAILED_LABEL IGNORED_CHECKS; do
+            echo "$v=${!v}"
+          done
 
       - name: Select the PR
         id: select
@@ -73,6 +94,26 @@ jobs:
           token: ${{ secrets.AI_PUSH_TOKEN || secrets.GITHUB_TOKEN }}
           path: pr
 
+      # PHP, phpcs and a Dolibarr core are used to check the fix before it is proposed (php -l, phpcs, PHPStan).
+      # The oldest supported core finds the calls to functions that only exist in newer versions.
+      - name: Setup PHP
+        if: steps.select.outputs.found == 'true'
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: phpcs
+          extensions: mbstring, intl, dom, simplexml, zip, curl
+
+      - name: Checkout Dolibarr ${{ env.DOLIBARR_CORE }}
+        if: steps.select.outputs.found == 'true'
+        uses: actions/checkout@v7
+        with:
+          repository: Dolibarr/dolibarr
+          ref: ${{ env.DOLIBARR_CORE }}
+          path: dolibarr
+          persist-credentials: false
+
       - name: Ask Mistral for a fix
         id: fix
         if: steps.select.outputs.found == 'true'
@@ -83,6 +124,7 @@ jobs:
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           MISTRAL_MODEL: ${{ inputs.model }}
           PR_NUMBER: ${{ steps.select.outputs.pr_number }}
+          DOLIBARR_HTDOCS: ${{ github.workspace }}/dolibarr/htdocs
         run: python3 "$GITHUB_WORKSPACE/.github/scripts/mistral_fix_pr_ci.py" fix
 
       - name: Push the fix on the PR
