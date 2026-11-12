@@ -144,7 +144,7 @@ class modBitTorrent extends DolibarrModules
 		$this->menu[$r]=array(	'fk_menu'=>'r=0',		// Use r=value where r is index key used for the parent menu entry (higher parent must be a top menu entry)
 									'type'=>'left',			// This is a Left menu entry
 									'titre'=>'Admin',
-								'prefix' => img_picto('', 'bittorrent@bittorrent', 'class="paddingright pictofixedwidth valignmiddle"'),
+								'prefix' => img_picto('', $this->picto, 'class="paddingright pictofixedwidth valignmiddle"'),
 									'mainmenu'=>'bittorrent',
 									'url'=>'/bittorrent/admin.php',
 									'langs'=>'bittorrent',	// Lang file to use (without .lang) by module. File must be in langs/code_CODE/ directory.
