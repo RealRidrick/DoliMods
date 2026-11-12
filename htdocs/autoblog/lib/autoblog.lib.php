@@ -89,25 +89,129 @@ function blogtopicPrepareHead($object)
  */
 function autoblogCompleteTopicFields($object, $websites)
 {
-	global $langs;
-
-	$langs->load("languages");
-
 	$websiteoptions = array();
 	$langoptions = array();
 	foreach ($websites as $website) {
 		$websiteoptions[$website->id] = $website->ref;
-		$websitelangs = array_merge(array((string) $website->lang), explode(',', (string) $website->otherlang));
-		foreach ($websitelangs as $langcode) {
-			$langcode = trim($langcode);
-			if ($langcode === '' || isset($langoptions[$langcode])) {
-				continue;
-			}
-			$langlabel = $langs->trans('Language_'.$langcode);
-			$langoptions[$langcode] = ($langlabel != 'Language_'.$langcode ? $langlabel.' ('.$langcode.')' : $langcode);
-		}
+		$langoptions = array_merge($langoptions, autoblogGetWebsiteLanguages($website));
 	}
 
 	$object->fields['fk_website']['arrayofkeyval'] = $websiteoptions;
 	$object->fields['lang']['arrayofkeyval'] = $langoptions;
+}
+
+/**
+ * Return the languages (long codes like fr_FR) of a website: the ones of its main language first, then the ones of its other languages.
+ * A short code of the website (fr) gives its main variant first (fr_FR), then its other variants (fr_BE, fr_CA...).
+ *
+ * @param	Website		$website	Website
+ * @return	array<string,string>	Array of language code => label
+ */
+function autoblogGetWebsiteLanguages($website)
+{
+	global $conf, $langs;
+
+	// Available languages are read once (all variants, and main variant of each language)
+	if (!isset($conf->cache['autoblog_languages'])) {
+		$conf->cache['autoblog_languages'] = array(
+			'all' => $langs->get_available_languages(DOL_DOCUMENT_ROOT),
+			'main' => $langs->get_available_languages(DOL_DOCUMENT_ROOT, 0, 0, 1),
+		);
+	}
+	$alllangs = $conf->cache['autoblog_languages']['all'];
+	$mainlangs = $conf->cache['autoblog_languages']['main'];
+
+	$result = array();
+	$websitelangs = array_merge(array((string) $website->lang), explode(',', (string) $website->otherlang));
+	foreach ($websitelangs as $websitelang) {
+		$websitelang = trim($websitelang);
+		if ($websitelang === '') {
+			continue;
+		}
+		$mainvariants = array();
+		$othervariants = array();
+		foreach ($alllangs as $code => $label) {
+			if ($code != $websitelang && strtolower((string) preg_replace('/_.*$/', '', $code)) != strtolower($websitelang)) {
+				continue;
+			}
+			$label = ($label != 'Language_'.$code ? $label.' ('.$code.')' : $code);	// Some codes have no translation
+			if (isset($mainlangs[$code])) {
+				$mainvariants[$code] = $label;
+			} else {
+				$othervariants[$code] = $label;
+			}
+		}
+		asort($othervariants);
+		$result += $mainvariants + $othervariants;
+	}
+
+	return $result;
+}
+
+/**
+ * Split a definition of fields into the fields before and the fields after a given field (sorted by position)
+ *
+ * @param	array<string,array<string,mixed>>	$fields		Definition of fields ($object->fields)
+ * @param	string								$key		Field used to split (it is in none of the result arrays)
+ * @return	array{0:array<string,array<string,mixed>>,1:array<string,array<string,mixed>>}	Fields before, fields after
+ */
+function autoblogSplitFields($fields, $key)
+{
+	$before = array();
+	$after = array();
+	foreach ($fields as $fieldkey => $val) {
+		if ($fieldkey == $key) {
+			continue;
+		}
+		if ($val['position'] < $fields[$key]['position']) {
+			$before[$fieldkey] = $val;
+		} else {
+			$after[$fieldkey] = $val;
+		}
+	}
+
+	return array($before, $after);
+}
+
+/**
+ * Return the form row to choose the language of a blog topic among the languages of its website.
+ * The combo list is rebuilt by js/autoblog.js when another website is selected.
+ *
+ * @param	Form				$form			Form object
+ * @param	array<int,Website>	$websites		Websites, as returned by Website::fetchAll()
+ * @param	int					$fkwebsite		ID of the selected website
+ * @param	string				$selected		Selected language code
+ * @return	string								HTML of the row
+ */
+function autoblogTopicLangRow($form, $websites, $fkwebsite, $selected)
+{
+	global $langs;
+
+	// Languages of each website, as arrays to keep the order (main language first)
+	$langsbywebsite = array();
+	foreach ($websites as $website) {
+		$langsbywebsite[$website->id] = array();
+		foreach (autoblogGetWebsiteLanguages($website) as $code => $label) {
+			$langsbywebsite[$website->id][] = array($code, $label);
+		}
+	}
+	$options = (isset($websites[$fkwebsite]) ? autoblogGetWebsiteLanguages($websites[$fkwebsite]) : array());
+	// A language saved with a short code (fr) preselects its first variant (fr_FR)
+	if ($selected !== '' && !isset($options[$selected])) {
+		foreach (array_keys($options) as $code) {
+			if (strpos($code, $selected.'_') === 0) {
+				$selected = $code;
+				break;
+			}
+		}
+	}
+
+	$out = '<tr class="field_lang"><td class="titlefieldcreate">';
+	$out .= '<label for="lang" class="block">'.$form->textwithpicto($langs->trans("Language"), $langs->trans("AutoBlogLangHelp")).'</label>';
+	$out .= '</td><td class="valuefieldcreate">';
+	$out .= img_picto('', 'language', 'class="pictofixedwidth"');
+	$out .= $form->selectarray('lang', $options, $selected, 0, 0, 0, ' data-langs-by-website="'.dol_escape_htmltag((string) json_encode($langsbywebsite)).'"', 0, 0, 0, '', 'minwidth200');
+	$out .= '</td></tr>';
+
+	return $out;
 }

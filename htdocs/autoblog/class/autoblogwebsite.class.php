@@ -81,7 +81,8 @@ class AutoBlogWebsite extends CommonObject
 		'url_competitors' => array('type' => 'text', 'label' => 'AutoBlogUrlCompetitors', 'enabled' => 1, 'position' => 60, 'notnull' => 0, 'visible' => 1),
 		'url_product_feed' => array('type' => 'varchar(255)', 'label' => 'AutoBlogUrlProductFeed', 'enabled' => 1, 'position' => 70, 'notnull' => 0, 'visible' => 1),
 		'url_sitemap' => array('type' => 'varchar(255)', 'label' => 'AutoBlogUrlSitemap', 'enabled' => 1, 'position' => 80, 'notnull' => 0, 'visible' => 1),
-		'instructions' => array('type' => 'text', 'label' => 'AutoBlogGenericInstructions', 'enabled' => 1, 'position' => 90, 'notnull' => 0, 'visible' => 1),
+		'url_style_example' => array('type' => 'varchar(255)', 'label' => 'AutoBlogUrlStyleExample', 'enabled' => 1, 'position' => 85, 'notnull' => 0, 'visible' => 1),
+		'instructions' => array('type' => 'text', 'label' => 'AutoBlogGenericInstructions', 'enabled' => 1, 'position' => 15, 'notnull' => 0, 'visible' => 1),
 		'date_creation' => array('type' => 'datetime', 'label' => 'DateCreation', 'enabled' => 1, 'position' => 500, 'notnull' => 1, 'visible' => -2),
 		'tms' => array('type' => 'timestamp', 'label' => 'DateModification', 'enabled' => 1, 'position' => 501, 'notnull' => 0, 'visible' => -2),
 		'fk_user_creat' => array('type' => 'integer:User:user/class/user.class.php', 'label' => 'UserAuthor', 'enabled' => 1, 'position' => 510, 'notnull' => 1, 'visible' => -2, 'foreignkey' => '0'),
@@ -132,6 +133,11 @@ class AutoBlogWebsite extends CommonObject
 	 * @var ?string URL of the sitemap
 	 */
 	public $url_sitemap;
+
+	/**
+	 * @var ?string URL of an article whose writing style is an example to follow
+	 */
+	public $url_style_example;
 
 	/**
 	 * @var ?string Generic instructions added to the generation of each article (one per line)
@@ -267,7 +273,7 @@ class AutoBlogWebsite extends CommonObject
 	 */
 	public function isFilled(): bool
 	{
-		foreach (array('description', 'differentiators', 'target_audience', 'url_competitors', 'url_product_feed', 'url_sitemap', 'instructions') as $field) {
+		foreach (array('description', 'differentiators', 'target_audience', 'url_competitors', 'url_product_feed', 'url_sitemap', 'url_style_example', 'instructions') as $field) {
 			if (trim((string) $this->$field) !== '') {
 				return true;
 			}

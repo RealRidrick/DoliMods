@@ -108,7 +108,7 @@ if ($result < 0) {
 
 // Multi-line text sections, then single URL sections
 $textfields = array('description', 'differentiators', 'target_audience', 'url_competitors', 'instructions');
-$urlfields = array('url_product_feed', 'url_sitemap');
+$urlfields = array('url_product_feed', 'url_sitemap', 'url_style_example');
 
 
 /*
@@ -130,7 +130,7 @@ if (empty($reshook)) {
 		$error = 0;
 
 		foreach ($textfields as $field) {
-			$object->$field = trim(GETPOST($field, 'restricthtml'));
+			$object->$field = trim(GETPOST($field, 'alphanohtml'));
 		}
 		foreach ($urlfields as $field) {
 			$object->$field = trim(GETPOST($field, 'url'));
@@ -138,7 +138,10 @@ if (empty($reshook)) {
 		$object->fk_country = (GETPOSTINT('fk_country') > 0 ? GETPOSTINT('fk_country') : null);
 
 		// Check the URLs
-		$urlstocheck = array_merge($object->getLines('url_competitors'), array((string) $object->url_product_feed, (string) $object->url_sitemap));
+		$urlstocheck = $object->getLines('url_competitors');
+		foreach ($urlfields as $field) {
+			$urlstocheck[] = (string) $object->$field;
+		}
 		foreach ($urlstocheck as $url) {
 			if ($url !== '' && !isValidUrl($url, 1)) {
 				$error++;
@@ -198,6 +201,7 @@ if ($action == 'edit' && $permissiontoedit) {
 
 // One section per part of the editorial setup
 $sections = array(
+	'instructions' => 'AutoBlogGenericInstructionsHelp',
 	'description' => '',
 	'differentiators' => '',
 	'target_audience' => '',
@@ -205,7 +209,7 @@ $sections = array(
 	'url_competitors' => 'AutoBlogOneUrlPerLine',
 	'url_product_feed' => 'AutoBlogNotUsedYet',
 	'url_sitemap' => 'AutoBlogNotUsedYet',
-	'instructions' => 'AutoBlogGenericInstructionsHelp',
+	'url_style_example' => 'AutoBlogUrlStyleExampleHelp',
 );
 foreach ($sections as $field => $helpkey) {
 	print load_fiche_titre($langs->trans($object->fields[$field]['label']), '', '', 0, '', 'margintoponly');
@@ -219,18 +223,18 @@ foreach ($sections as $field => $helpkey) {
 		} elseif (in_array($field, $urlfields)) {
 			print '<input type="text" class="flat minwidth500 widthcentpercentminusx" name="'.$field.'" value="'.dol_escape_htmltag((string) $object->$field).'" placeholder="https://">';
 		} else {
-			print '<textarea class="flat centpercent" rows="'.($field == 'url_competitors' ? 3 : 5).'" name="'.$field.'">'.dol_escape_htmltag((string) $object->$field).'</textarea>';
+			print '<textarea class="flat centpercent" rows="'.($field == 'url_competitors' ? 3 : 5).'" name="'.$field.'">'.dolPrintText((string) $object->$field).'</textarea>';
 		}
 	} else {
 		print '<div class="wordbreak">';
 		if ($field == 'fk_country') {
 			print ((int) $object->fk_country > 0 ? dol_escape_htmltag(getCountry((int) $object->fk_country, '', $db, null, 0)) : '<span class="opacitymedium">'.$langs->trans("AutoBlogAllCountries").'</span>');
-		} elseif (in_array($field, array('url_competitors', 'url_product_feed', 'url_sitemap'))) {
+		} elseif ($field == 'url_competitors' || in_array($field, $urlfields)) {
 			foreach ($object->getLines($field) as $url) {
 				print dol_print_url($url, '_blank', 64, 1).'<br>';
 			}
 		} else {
-			print dol_nl2br(dol_escape_htmltag((string) $object->$field));
+			print dol_nl2br((string) $object->$field);
 		}
 		print '</div>';
 	}

@@ -50,3 +50,47 @@ jQuery(document).ready(function () {
 		}
 	});
 });
+
+/*
+ * Limit the combo list of languages of a blog topic to the languages of the selected website.
+ * The languages of each website are provided by the attribute data-langs-by-website of the combo list.
+ */
+jQuery(document).ready(function () {
+	var website = jQuery('select#fk_website');
+	var lang = jQuery('select#lang[data-langs-by-website]');
+	if (website.length === 0 || lang.length === 0) {
+		return;
+	}
+
+	var langsbywebsite = lang.data('langs-by-website') || {};
+
+	function refreshLanguages() {
+		var langs = langsbywebsite[website.val()] || [];
+		var selected = lang.val();
+		lang.empty();
+		jQuery.each(langs, function (i, langdef) {
+			lang.append(jQuery('<option></option>').val(langdef[0]).text(langdef[1]));
+		});
+		// Keep the selected language if the website has it, else a variant of the same language, else the first one
+		var codes = jQuery.map(langs, function (langdef) {
+			return langdef[0];
+		});
+		var newselected = (codes.length ? codes[0] : null);
+		if (jQuery.inArray(selected, codes) >= 0) {
+			newselected = selected;
+		} else if (selected) {
+			var prefix = selected.split('_')[0] + '_';
+			jQuery.each(codes, function (i, code) {
+				if (code.indexOf(prefix) === 0) {
+					newselected = code;
+					return false;
+				}
+			});
+		}
+		lang.val(newselected);
+		lang.trigger('change');
+	}
+
+	website.on('change', refreshLanguages);
+	refreshLanguages();
+});

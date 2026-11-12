@@ -25,6 +25,7 @@ CREATE TABLE llx_autoblog_website(
 	url_competitors TEXT,
 	url_product_feed VARCHAR(255),
 	url_sitemap VARCHAR(255),
+	url_style_example VARCHAR(255),
 	instructions TEXT,
 	date_creation DATETIME NOT NULL,
 	tms TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

@@ -125,6 +125,8 @@ if (!isModEnabled('autoblog')) {
 if (!$permissiontoread) {
 	accessforbidden();
 }
+// Check also that the topic is in an entity of the user
+restrictedArea($user, 'autoblog', $object, $object->table_element.'&'.$object->element, 'blogtopic', '', 'rowid');
 
 $error = 0;
 
@@ -179,6 +181,18 @@ if (empty($reshook)) {
 		$action = '';
 	}
 
+	// Save the content of the article edited manually (the cancel button is managed by actions_addupdatedelete.inc.php)
+	if ($action == 'updatecontent' && $permissiontoadd && $object->id > 0) {
+		$result = $object->updateContent($user, GETPOST('autoblogcontent', 'restricthtml'));
+		if ($result > 0) {
+			setEventMessages($langs->trans("RecordSaved"), null, 'mesgs');
+			header("Location: ".$_SERVER["PHP_SELF"].'?id='.((int) $object->id));
+			exit;
+		}
+		setEventMessages($object->error, $object->errors, 'errors');
+		$action = 'editcontent';
+	}
+
 	// Publish the generated article on the website
 	if ($action == 'confirm_publish' && $confirm == 'yes' && $permissiontopublish && $object->id > 0) {
 		$result = $object->publishArticle($user);
@@ -209,11 +223,13 @@ if ($action == 'create') {
 $help_url = '';
 
 $morejs = array();
-if ($action == 'create') {
-	$morejs[] = '/autoblog/js/autoblog.js';	// Autofill of the page alias from the title
+$morecss = array();
+if ($action == 'create' || $action == 'edit') {
+	$morejs[] = '/autoblog/js/autoblog.js';	// Autofill of the page alias from the title, languages of the selected website
+	$morecss[] = '/autoblog/css/autoblog.css';	// Higher field for instructions
 }
 
-llxHeader('', $title, $help_url, '', 0, 0, $morejs, '', '', 'mod-autoblog page-card');
+llxHeader('', $title, $help_url, '', 0, 0, $morejs, $morecss, '', 'mod-autoblog page-card');
 
 // Part to create
 if ($action == 'create') {
@@ -241,8 +257,20 @@ if ($action == 'create') {
 
 	print '<table class="border centpercent tableforfieldcreate">'."\n";
 
-	// Common attributes
+	// Common attributes. The core template shows all languages for a field 'lang', so the language is shown
+	// by us between the fields before and after it, with the languages of the selected website only.
+	$fkwebsite = (GETPOSTISSET('fk_website') ? GETPOSTINT('fk_website') : (int) ($object->fields['fk_website']['default'] ?? 0));
+	if ($fkwebsite <= 0 && count($websites) == 1) {
+		$fkwebsite = (int) key($websites);
+	}
+	$allfields = $object->fields;
+	list($fieldsbefore, $fieldsafter) = autoblogSplitFields($allfields, 'lang');
+	$object->fields = $fieldsbefore;
 	include DOL_DOCUMENT_ROOT.'/core/tpl/commonfields_add.tpl.php';
+	print autoblogTopicLangRow($form, $websites, $fkwebsite, GETPOST('lang', 'aZ09'));
+	$object->fields = $fieldsafter;
+	include DOL_DOCUMENT_ROOT.'/core/tpl/commonfields_add.tpl.php';
+	$object->fields = $allfields;
 
 	print '</table>'."\n";
 
@@ -272,8 +300,16 @@ if ($object->id > 0 && $action == 'edit') {
 
 	print '<table class="border centpercent tableforfieldedit">'."\n";
 
-	// Common attributes
+	// Common attributes, with the language shown by us (see the create form)
+	$fkwebsite = (GETPOSTISSET('fk_website') ? GETPOSTINT('fk_website') : (int) $object->fk_website);
+	$allfields = $object->fields;
+	list($fieldsbefore, $fieldsafter) = autoblogSplitFields($allfields, 'lang');
+	$object->fields = $fieldsbefore;
 	include DOL_DOCUMENT_ROOT.'/core/tpl/commonfields_edit.tpl.php';
+	print autoblogTopicLangRow($form, $websites, $fkwebsite, (GETPOSTISSET('lang') ? GETPOST('lang', 'aZ09') : (string) $object->lang));
+	$object->fields = $fieldsafter;
+	include DOL_DOCUMENT_ROOT.'/core/tpl/commonfields_edit.tpl.php';
+	$object->fields = $allfields;
 
 	print '</table>';
 
@@ -330,19 +366,34 @@ if ($object->id > 0 && (empty($action) || ($action != 'edit' && $action != 'crea
 	// ------------------------------------------------------------
 	$linkback = '<a href="'.dol_buildpath('/autoblog/blogtopic_list.php', 1).'?restore_lastsearch_values=1">'.$langs->trans("BackToList").'</a>';
 
-	$morehtmlref = '<div class="refidno">';
-	$morehtmlref .= dol_escape_htmltag((string) $object->label);
-	$morehtmlref .= '</div>';
+	$morehtmlref = '';
 
-	dol_banner_tab($object, 'ref', $linkback, 1, 'ref', 'ref', $morehtmlref);
+	// The title is shown as ref of the banner, the navigation stays on the page alias (field ref)
+	dol_banner_tab($object, 'ref', $linkback, 1, 'ref', 'label', $morehtmlref);
 
 	print '<div class="fichecenter">';
 	print '<div class="fichehalfleft">';
 	print '<div class="underbanner clearboth"></div>';
 	print '<table class="border centpercent tableforfield">'."\n";
 
-	// Common attributes
+	// Common attributes. The template shows them in the left column, then opens the right column (table still open).
+	// The instructions of the article are shown last in the left column.
+	$object->fields['instructions']['position'] = 450;
+	// With this type, the website is shown with Website::getNomUrl() (the forms keep the combo list of websites)
+	$object->fields['fk_website']['type'] = 'integer:Website:website/class/website.class.php';
+
+	// The title and the page alias are shown first by us, because the core template never shows the field ref
+	print '<tr class="field_label"><td class="titlefieldmiddle fieldname_label">';
+	print $form->editfieldkey($langs->trans($object->fields['label']['label']), 'label', $object->label, $object, $permissiontoadd, 'string');
+	print '</td><td class="valuefield fieldname_label">';
+	print $form->editfieldval($langs->trans($object->fields['label']['label']), 'label', $object->label, $object, $permissiontoadd, 'string');
+	print '</td></tr>';
+	print '<tr class="field_ref"><td class="titlefieldmiddle fieldname_ref">'.$form->textwithpicto($langs->trans("AutoBlogPageAlias"), $langs->trans("AutoBlogPageAliasHelp")).'</td>';
+	print '<td class="valuefield fieldname_ref">'.dol_escape_htmltag((string) $object->ref).'</td></tr>';
+	$allfields = $object->fields;
+	unset($object->fields['label']);
 	include DOL_DOCUMENT_ROOT.'/core/tpl/commonfields_view.tpl.php';
+	$object->fields = $allfields;
 
 	// Published page
 	$websiteref = (isset($websites[$object->fk_website]) ? $websites[$object->fk_website]->ref : '');
@@ -355,28 +406,28 @@ if ($object->id > 0 && (empty($action) || ($action != 'edit' && $action != 'crea
 
 	// Last error
 	if (!empty($object->last_error)) {
-		print '<tr><td class="titlefield">'.$langs->trans("Error").'</td><td class="error wordbreak">'.dol_nl2br(dol_escape_htmltag((string) $object->last_error)).'</td></tr>';
+		print '<tr><td class="titlefield">'.$langs->trans("Error").'</td><td class="error wordbreak">'.dol_nl2br(dol_escape_htmltag((string) $object->last_error, 0, 1)).'</td></tr>';
 	}
 
 	print '</table>';
-	print '</div>';
 
-	// Editorial setup of the website, sent to the AI with the instructions of the topic
-	print '<div class="fichehalfright">';
-	print '<div class="underbanner clearboth"></div>';
+	// Editorial setup of the website, sent to the AI with the instructions of the topic (into the right column)
 	$setup = new AutoBlogWebsite($db);
 	$resultsetup = ($object->fk_website > 0 ? $setup->fetchByWebsite((int) $object->fk_website) : 0);
-	print '<table class="border centpercent tableforfield">';
+	print '<table class="border centpercent tableforfield margintoponly">';
 	print '<tr><td colspan="2"><span class="opacitymedium">'.$langs->trans("AutoBlogWebsiteSetupReminder").'</span>';
 	if ($object->fk_website > 0) {
-		print ' <a href="'.dol_buildpath('/autoblog/autoblogwebsite_card.php', 1).'?websiteid='.((int) $object->fk_website).'">'.img_picto($langs->trans("Show"), 'eye', 'class="paddingleft"').'</a>';
+		// The eye opens a dialog popup with the full request that will be sent to the AI (url must be relative to DOL_URL_ROOT)
+		$urlairequest = preg_replace('/^'.preg_quote(DOL_URL_ROOT, '/').'/', '', dol_buildpath('/autoblog/blogtopic_prompt.php', 1)).'?id='.((int) $object->id);
+		print ' '.dolButtonToOpenUrlInDialogPopup('autoblogairequest', $langs->transnoentitiesnoconv("AutoBlogAIRequest"), img_picto($langs->trans("AutoBlogShowAIRequest"), 'eye', 'class="paddingleft"'), $urlairequest, '', '');
+		print ' <a href="'.dol_buildpath('/autoblog/autoblogwebsite_card.php', 1).'?websiteid='.((int) $object->fk_website).'">'.img_picto($langs->trans("AutoBlogEditorialSetup"), 'website', 'class="paddingleft"').'</a>';
 	}
 	print '</td></tr>';
 	if ($resultsetup > 0 && $setup->isFilled()) {
-		foreach (array('description', 'differentiators', 'target_audience', 'instructions') as $field) {
+		foreach (array('instructions', 'description', 'differentiators', 'target_audience') as $field) {
 			if (trim((string) $setup->$field) !== '') {
 				print '<tr><td class="titlefield">'.$langs->trans($setup->fields[$field]['label']).'</td>';
-				print '<td class="wordbreak">'.dol_nl2br(dol_escape_htmltag(dol_trunc((string) $setup->$field, 300))).'</td></tr>';
+				print '<td class="wordbreak small">'.dol_nl2br(dol_escape_htmltag(dol_trunc((string) $setup->$field, 300), 0, 1)).'</td></tr>';
 			}
 		}
 		print '<tr><td class="titlefield">'.$langs->trans("AutoBlogTargetLocation").'</td>';
@@ -391,59 +442,66 @@ if ($object->id > 0 && (empty($action) || ($action != 'edit' && $action != 'crea
 
 	print dol_get_fiche_end();
 
-	// Buttons for actions
-	print '<div class="tabsAction">'."\n";
-	$parameters = array();
-	$reshook = $hookmanager->executeHooks('addMoreActionsButtons', $parameters, $object, $action); // Note that $action and $object may have been modified by hook
-	if ($reshook < 0) {
-		setEventMessages($hookmanager->error, $hookmanager->errors, 'errors');
+	// Buttons for actions (not shown while the article is edited)
+	if ($action != 'editcontent') {
+		print '<div class="tabsAction">'."\n";
+		$parameters = array();
+		$reshook = $hookmanager->executeHooks('addMoreActionsButtons', $parameters, $object, $action); // Note that $action and $object may have been modified by hook
+		if ($reshook < 0) {
+			setEventMessages($hookmanager->error, $hookmanager->errors, 'errors');
+		}
+
+		if (empty($reshook)) {
+			$urlcard = $_SERVER["PHP_SELF"].'?id='.$object->id;
+
+			// Back to draft
+			if (in_array($object->status, array($object::STATUS_QUEUED, $object::STATUS_GENERATED, $object::STATUS_ERROR))) {
+				print dolGetButtonAction('', $langs->trans('SetToDraft'), 'default', $urlcard.'&action=confirm_setdraft&confirm=yes&token='.newToken(), '', $permissiontoadd);
+			}
+
+			// Modify
+			print dolGetButtonAction('', $langs->trans('Modify'), 'default', $urlcard.'&action=edit&token='.newToken(), '', $permissiontoadd);
+
+			// Put in queue of the scheduled job
+			if ($object->status == $object::STATUS_DRAFT) {
+				print dolGetButtonAction('', $langs->trans('AutoBlogPutInQueue'), 'default', $urlcard.'&action=confirm_validate&confirm=yes&token='.newToken(), '', $permissiontoadd);
+			}
+			// Put back in queue a topic in error
+			if ($object->status == $object::STATUS_ERROR) {
+				print dolGetButtonAction('', $langs->trans('AutoBlogPutBackInQueue'), 'default', $urlcard.'&action=confirm_reopen&confirm=yes&token='.newToken(), '', $permissiontoadd);
+			}
+
+			// Generate now
+			if (in_array($object->status, array($object::STATUS_DRAFT, $object::STATUS_QUEUED, $object::STATUS_ERROR))) {
+				print dolGetButtonAction('', $langs->trans('AutoBlogGenerateNow'), 'default', $urlcard.'&action=generate&token='.newToken(), '', $permissiontoadd);
+			}
+
+			if (in_array($object->status, array($object::STATUS_GENERATED, $object::STATUS_PUBLISHED))) {
+				// Regenerate: append instructions and generate again
+				print dolGetButtonAction('', $langs->trans('AutoBlogCorrect'), 'default', $urlcard.'&action=correct&token='.newToken(), '', $permissiontoadd);
+
+				// Edit the article manually
+				if (!empty($object->content)) {
+					print dolGetButtonAction('', $langs->trans('AutoBlogEditArticle'), 'default', $urlcard.'&action=editcontent&token='.newToken().'#autoblogarticle', '', $permissiontoadd);
+				}
+			}
+
+			// Publish or update the publication
+			if ($object->status == $object::STATUS_GENERATED) {
+				$labelpublish = ($object->fk_websitepage > 0 ? $langs->trans('AutoBlogUpdatePublication') : $langs->trans('AutoBlogPublish'));
+				print dolGetButtonAction($permissiontopublish ? '' : $langs->trans('NotEnoughPermissions'), $labelpublish, 'default', $urlcard.'&action=publish&token='.newToken(), '', $permissiontopublish);
+			}
+
+			// Delete (with preloaded confirm popup)
+			$deleteUrl = $urlcard.'&action=delete&token='.newToken();
+			$buttonId = 'action-delete-no-ajax';
+			if ($conf->use_javascript_ajax && empty($conf->dol_use_jmobile)) {	// We can use preloaded confirm if not jmobile
+				$buttonId = 'action-delete';
+			}
+			print dolGetButtonAction($langs->trans("Delete"), $langs->trans("Delete"), 'delete', $deleteUrl, $buttonId, $permissiontodelete);
+		}
+		print '</div>'."\n";
 	}
-
-	if (empty($reshook)) {
-		$urlcard = $_SERVER["PHP_SELF"].'?id='.$object->id;
-
-		// Modify
-		print dolGetButtonAction('', $langs->trans('Modify'), 'default', $urlcard.'&action=edit&token='.newToken(), '', $permissiontoadd);
-
-		// Put in queue of the scheduled job
-		if ($object->status == $object::STATUS_DRAFT) {
-			print dolGetButtonAction('', $langs->trans('AutoBlogPutInQueue'), 'default', $urlcard.'&action=confirm_validate&confirm=yes&token='.newToken(), '', $permissiontoadd);
-		}
-		// Put back in queue a topic in error
-		if ($object->status == $object::STATUS_ERROR) {
-			print dolGetButtonAction('', $langs->trans('AutoBlogPutBackInQueue'), 'default', $urlcard.'&action=confirm_reopen&confirm=yes&token='.newToken(), '', $permissiontoadd);
-		}
-
-		// Generate now
-		if (in_array($object->status, array($object::STATUS_DRAFT, $object::STATUS_QUEUED, $object::STATUS_ERROR))) {
-			print dolGetButtonAction('', $langs->trans('AutoBlogGenerateNow'), 'default', $urlcard.'&action=generate&token='.newToken(), '', $permissiontoadd);
-		}
-
-		// Publish or update the publication
-		if ($object->status == $object::STATUS_GENERATED) {
-			$labelpublish = ($object->fk_websitepage > 0 ? $langs->trans('AutoBlogUpdatePublication') : $langs->trans('AutoBlogPublish'));
-			print dolGetButtonAction($permissiontopublish ? '' : $langs->trans('NotEnoughPermissions'), $labelpublish, 'default', $urlcard.'&action=publish&token='.newToken(), '', $permissiontopublish);
-		}
-
-		// Correct: append instructions and generate again
-		if (in_array($object->status, array($object::STATUS_GENERATED, $object::STATUS_PUBLISHED))) {
-			print dolGetButtonAction('', $langs->trans('AutoBlogCorrect'), 'default', $urlcard.'&action=correct&token='.newToken(), '', $permissiontoadd);
-		}
-
-		// Back to draft
-		if (in_array($object->status, array($object::STATUS_QUEUED, $object::STATUS_GENERATED, $object::STATUS_ERROR))) {
-			print dolGetButtonAction('', $langs->trans('SetToDraft'), 'default', $urlcard.'&action=confirm_setdraft&confirm=yes&token='.newToken(), '', $permissiontoadd);
-		}
-
-		// Delete (with preloaded confirm popup)
-		$deleteUrl = $urlcard.'&action=delete&token='.newToken();
-		$buttonId = 'action-delete-no-ajax';
-		if ($conf->use_javascript_ajax && empty($conf->dol_use_jmobile)) {	// We can use preloaded confirm if not jmobile
-			$buttonId = 'action-delete';
-		}
-		print dolGetButtonAction($langs->trans("Delete"), $langs->trans("Delete"), 'delete', $deleteUrl, $buttonId, $permissiontodelete);
-	}
-	print '</div>'."\n";
 
 	// Preview of the generated article
 	if (!empty($object->content)) {
@@ -453,10 +511,28 @@ if ($object->id > 0 && (empty($action) || ($action != 'edit' && $action != 'crea
 		print '<table class="border centpercent tableforfield">';
 		print '<tr><td class="titlefield">'.$langs->trans("Title").'</td><td><strong>'.dol_escape_htmltag((string) $object->label).'</strong></td></tr>';
 		print '<tr><td class="titlefield">'.$langs->trans("Description").'</td><td>'.dol_escape_htmltag((string) $object->description).'</td></tr>';
-		print '<tr><td class="titlefield tdtop">'.$langs->trans("AutoBlogContent").'</td><td>';
-		print '<div class="autoblog-preview">'.dolPrintHTML((string) $object->content).'</div>';
-		print '</td></tr>';
 		print '</table>';
+		print '</div>';
+
+		// Content of the article into the WYSIWYG editor on the full width of the page, read only or in edit mode. Its HTML
+		// is cleaned at generation and at save, so the content filter of the editor is disabled (it may remove some tags).
+		require_once DOL_DOCUMENT_ROOT.'/core/class/doleditor.class.php';
+		print '<div class="margintoponly" id="autoblogarticle">';
+		if ($action == 'editcontent' && $permissiontoadd) {
+			print '<form method="POST" action="'.$_SERVER["PHP_SELF"].'">';
+			print '<input type="hidden" name="token" value="'.newToken().'">';
+			print '<input type="hidden" name="action" value="updatecontent">';
+			print '<input type="hidden" name="id" value="'.((int) $object->id).'">';
+			$contenttoedit = (GETPOSTISSET('autoblogcontent') ? GETPOST('autoblogcontent', 'restricthtml') : (string) $object->content);
+			$doleditor = new DolEditor('autoblogcontent', $contenttoedit, '', 1000, 'dolibarr_notes', '', true, 0, true, 0, '100%', 0);
+			print $doleditor->Create(1, '', false);
+			// Some space between the editor and the buttons
+			print '<br><div class="margintoponly">'.$form->buttonsSaveCancel().'</div>';
+			print '</form>';
+		} else {
+			$doleditor = new DolEditor('autoblogcontent', dolPrintHTML((string) $object->content), '', 1000, 'dolibarr_readonly', '', false, 0, true, 0, '100%', 1);
+			print $doleditor->Create(1, '', false);
+		}
 		print '</div>';
 	}
 }
