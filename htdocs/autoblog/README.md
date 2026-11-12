@@ -11,7 +11,7 @@ Generate the blog articles of your websites (Website module) with AI (AI module)
 
 ## Prerequisites
 
-- Dolibarr 22+, with the modules Website and AI enabled and an AI service configured.
+- Dolibarr 25+, with the modules Website and AI enabled and an AI service configured.
 - PHP 8.1+.
 
 ## Licenses

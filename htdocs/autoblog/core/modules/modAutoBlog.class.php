@@ -114,7 +114,7 @@ class modAutoBlog extends DolibarrModules
 
 		// Prerequisites
 		$this->phpmin = array(8, 1);
-		$this->need_dolibarr_version = array(22, 0, -3);
+		$this->need_dolibarr_version = array(25, 0, -3);
 		$this->need_javascript_ajax = 0;
 
 		// Messages at activation
