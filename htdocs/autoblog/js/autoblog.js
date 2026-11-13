@@ -21,7 +21,7 @@
 jQuery(document).ready(function () {
 	var form = jQuery('input[name="action"][value="add"]').closest('form');
 	var title = form.find('#label');
-	var alias = form.find('#ref');
+	var alias = form.find('#pageurl');
 	if (title.length === 0 || alias.length === 0) {
 		return;
 	}

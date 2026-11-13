@@ -18,3 +18,7 @@
 
 
 ALTER TABLE llx_autoblog_website ADD COLUMN url_style_example VARCHAR(255);
+
+-- The page alias was stored into ref, which is now the ID of the record
+ALTER TABLE llx_autoblog_blogtopic ADD COLUMN pageurl VARCHAR(128);
+UPDATE llx_autoblog_blogtopic SET pageurl = ref, ref = rowid WHERE pageurl IS NULL;
