@@ -18,6 +18,7 @@ CREATE TABLE llx_autoblog_blogtopic(
 	rowid INTEGER AUTO_INCREMENT PRIMARY KEY NOT NULL,
 	entity INTEGER DEFAULT 1 NOT NULL,
 	ref VARCHAR(128) NOT NULL,
+	pageurl VARCHAR(128),
 	label VARCHAR(255) NOT NULL,
 	instructions TEXT,
 	keywords VARCHAR(255),

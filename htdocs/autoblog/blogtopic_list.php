@@ -70,7 +70,7 @@ dol_include_once('/autoblog/class/blogtopic.class.php');
 dol_include_once('/autoblog/lib/autoblog.lib.php');
 
 // Load translation files required by the page
-$langs->loadLangs(array("autoblog@autoblog", "website", "other"));
+$langs->loadLangs(array("autoblog@autoblog", "website", "other", "languages"));
 
 // Get parameters
 $action     = GETPOST('action', 'aZ09') ? GETPOST('action', 'aZ09') : 'view';
@@ -149,6 +149,9 @@ foreach ($object->fields as $key => $val) {
 		);
 	}
 }
+// Change position of fields in arrayfield and object, with the order saved by the user with drag and drop
+include DOL_DOCUMENT_ROOT.'/core/tpl/arrayfield_object_position_fields.tpl.php';
+
 $object->fields = dol_sort_array($object->fields, 'position');
 $arrayfields = dol_sort_array($arrayfields, 'position');
 
@@ -515,6 +518,17 @@ while ($i < $imaxinloop) {
 				print $object->getLibStatut(5);
 			} elseif ($key == 'ref') {
 				print $object->getNomUrl(1);
+			} elseif ($key == 'fk_website' && isset($websites[$object->fk_website])) {
+				print $websites[$object->fk_website]->getNomUrl(1);
+			} elseif ($key == 'lang') {
+				// Flag and label of the language, its code is shown into the tooltip only
+				if (!empty($object->lang)) {
+					$labellang = $langs->trans('Language_'.$object->lang);
+					print '<span title="'.dolPrintHTMLForAttribute((string) $object->lang).'">';
+					print picto_from_langcode((string) $object->lang, 'class="paddingrightonly saturatemedium opacitylow"', 1);
+					print dolPrintHTML($labellang != 'Language_'.$object->lang ? $labellang : (string) $object->lang);
+					print '</span>';
+				}
 			} else {
 				print $object->showOutputField($val, $key, (string) $object->$key, '');
 			}

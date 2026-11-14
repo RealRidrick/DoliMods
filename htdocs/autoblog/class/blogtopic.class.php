@@ -91,16 +91,17 @@ class BlogTopic extends CommonObject
 	public $fields = array(
 		'rowid' => array('type' => 'integer', 'label' => 'TechnicalID', 'enabled' => 1, 'position' => 1, 'notnull' => 1, 'visible' => -1, 'noteditable' => 1, 'index' => 1, 'css' => 'left', 'comment' => 'Id'),
 		'entity' => array('type' => 'integer', 'label' => 'Entity', 'default' => '1', 'enabled' => 1, 'visible' => 0, 'notnull' => 1, 'position' => 5, 'index' => 1),
-		'ref' => array('type' => 'varchar(128)', 'label' => 'AutoBlogPageAlias', 'enabled' => 1, 'position' => 10, 'notnull' => 0, 'visible' => 1, 'index' => 1, 'searchall' => 1, 'showoncombobox' => 1, 'css' => 'minwidth300', 'help' => 'AutoBlogPageAliasHelp', 'langfile' => 'autoblog@autoblog'),
+		'ref' => array('type' => 'varchar(128)', 'label' => 'Ref', 'enabled' => 1, 'position' => 10, 'notnull' => 1, 'visible' => 5, 'noteditable' => 1, 'default' => '(PROV)', 'index' => 1, 'searchall' => 1, 'showoncombobox' => 1, 'comment' => 'Reference of object, equal to its ID'),
+		'pageurl' => array('type' => 'varchar(128)', 'label' => 'AutoBlogPageAlias', 'enabled' => 1, 'position' => 15, 'notnull' => 0, 'visible' => -1, 'searchall' => 1, 'css' => 'minwidth300', 'help' => 'AutoBlogPageAliasHelp', 'langfile' => 'autoblog@autoblog'),
 		'label' => array('type' => 'varchar(255)', 'label' => 'Title', 'enabled' => 1, 'position' => 20, 'notnull' => 1, 'visible' => 1, 'alwayseditable' => 1, 'searchall' => 1, 'css' => 'minwidth500 widthcentpercentminusx', 'cssview' => 'wordbreak', 'csslist' => 'tdoverflowmax300', 'showoncombobox' => 2, 'autofocusoncreate' => 1),
 		'fk_website' => array('type' => 'integer', 'label' => 'WebSite', 'picto' => 'website', 'enabled' => 1, 'position' => 30, 'notnull' => 1, 'visible' => 1, 'index' => 1, 'css' => 'maxwidth300', 'csslist' => 'tdoverflowmax150'),
 		'lang' => array('type' => 'varchar(6)', 'label' => 'Language', 'picto' => 'language', 'enabled' => 1, 'position' => 40, 'notnull' => 0, 'visible' => 1, 'css' => 'maxwidth200', 'help' => 'AutoBlogLangHelp', 'langfile' => 'autoblog@autoblog'),
 		'keywords' => array('type' => 'varchar(255)', 'label' => 'WEBSITE_KEYWORDS', 'enabled' => 1, 'position' => 50, 'notnull' => 0, 'visible' => -1, 'alwayseditable' => 1, 'css' => 'minwidth500 widthcentpercentminusx', 'help' => 'AutoBlogKeywordsHelp', 'langfile' => 'autoblog@autoblog'),
 		'instructions' => array('type' => 'text', 'label' => 'AutoBlogInstructions', 'enabled' => 1, 'position' => 60, 'notnull' => 0, 'visible' => 3, 'alwayseditable' => 1, 'css' => 'quatrevingtpercent', 'cssview' => 'wordbreak', 'help' => 'AutoBlogInstructionsHelp', 'langfile' => 'autoblog@autoblog'),
-		'date_planned' => array('type' => 'datetime', 'label' => 'AutoBlogDatePlanned', 'enabled' => 1, 'position' => 70, 'notnull' => 0, 'visible' => 1, 'help' => 'AutoBlogDatePlannedHelp', 'langfile' => 'autoblog@autoblog'),
+		'date_planned' => array('type' => 'datetime', 'label' => 'AutoBlogDatePlanned', 'enabled' => 1, 'position' => 70, 'notnull' => 0, 'visible' => -1, 'help' => 'AutoBlogDatePlannedHelp', 'langfile' => 'autoblog@autoblog'),
 		'content' => array('type' => 'html', 'label' => 'AutoBlogContent', 'enabled' => 1, 'position' => 100, 'notnull' => 0, 'visible' => 0),
 		'description' => array('type' => 'varchar(255)', 'label' => 'Description', 'enabled' => 1, 'position' => 110, 'notnull' => 0, 'visible' => 0),
-		'date_generation' => array('type' => 'datetime', 'label' => 'AutoBlogDateGeneration', 'enabled' => 1, 'position' => 120, 'notnull' => 0, 'visible' => -5, 'langfile' => 'autoblog@autoblog'),
+		'date_generation' => array('type' => 'datetime', 'label' => 'AutoBlogDateGeneration', 'enabled' => 1, 'position' => 120, 'notnull' => 0, 'visible' => 5, 'langfile' => 'autoblog@autoblog'),
 		'date_publication' => array('type' => 'datetime', 'label' => 'AutoBlogDatePublication', 'langfile' => 'autoblog@autoblog', 'enabled' => 1, 'position' => 130, 'notnull' => 0, 'visible' => 5),
 		'fk_websitepage' => array('type' => 'integer', 'label' => 'Page', 'enabled' => 1, 'position' => 140, 'notnull' => 0, 'visible' => 0),
 		'nb_attempts' => array('type' => 'integer', 'label' => 'AutoBlogNbAttempts', 'enabled' => 1, 'position' => 150, 'notnull' => 1, 'default' => '0', 'visible' => -5, 'langfile' => 'autoblog@autoblog'),
@@ -120,9 +121,14 @@ class BlogTopic extends CommonObject
 	public $rowid;
 
 	/**
-	 * @var string Ref, used as alias (pageurl) of the website page to create
+	 * @var string Ref, equal to the ID of the record
 	 */
 	public $ref;
+
+	/**
+	 * @var string Alias (pageurl) of the website page to create
+	 */
+	public $pageurl;
 
 	/**
 	 * @var string Title of the article
@@ -178,6 +184,11 @@ class BlogTopic extends CommonObject
 	 * @var ?int ID of the published website page
 	 */
 	public $fk_websitepage;
+
+	/**
+	 * @var ?WebsitePage Page of the website linked to the topic (null=not searched yet, id=0 if no page), see fetchPublishedPage()
+	 */
+	public $publishedpage = null;
 
 	/**
 	 * @var int Number of generation attempts
@@ -281,8 +292,26 @@ class BlogTopic extends CommonObject
 		}
 		$this->status = self::STATUS_DRAFT;
 		$this->nb_attempts = 0;
+		$this->ref = '(PROV)';
 
-		return $this->createCommon($user, $notrigger);
+		$this->db->begin();
+
+		$result = $this->createCommon($user, $notrigger);
+		if ($result > 0) {
+			// The ref is the ID of the record, known only once the record is inserted
+			$this->ref = (string) $this->id;
+			if ($this->updateCommon($user, 1) < 0) {
+				$result = -1;
+			}
+		}
+
+		if ($result > 0) {
+			$this->db->commit();
+		} else {
+			$this->db->rollback();
+		}
+
+		return $result;
 	}
 
 	/**
@@ -325,9 +354,9 @@ class BlogTopic extends CommonObject
 
 		$langs->load("autoblog@autoblog");
 
-		// The ref is the alias of the future website page, so we compute it from title when not provided
-		$this->ref = self::buildPageAlias((string) (empty($this->ref) ? $this->label : $this->ref));
-		if ($this->ref === '') {
+		// The alias of the future website page is computed from the title when not provided
+		$this->pageurl = self::buildPageAlias((string) (empty($this->pageurl) ? $this->label : $this->pageurl));
+		if ($this->pageurl === '') {
 			$this->error = $langs->trans("ErrorFieldRequired", $langs->transnoentitiesnoconv("AutoBlogPageAlias"));
 			$this->errors[] = $this->error;
 			return -1;
@@ -657,7 +686,8 @@ class BlogTopic extends CommonObject
 		$this->error = '';
 		$this->errors = array();
 
-		if ($this->status != self::STATUS_GENERATED || trim((string) $this->content) === '') {
+		// A draft can be published if it already has a generated content
+		if (!in_array($this->status, array(self::STATUS_DRAFT, self::STATUS_GENERATED)) || trim((string) $this->content) === '') {
 			$this->error = $langs->trans("AutoBlogErrorNothingToPublish");
 			return -1;
 		}
@@ -686,21 +716,25 @@ class BlogTopic extends CommonObject
 		$page->keywords = (string) $this->keywords;
 		$page->content = $this->removePhpCode((string) $this->content);
 		$page->status = WebsitePage::STATUS_VALIDATED;
+		// Link the page to the topic
+		$page->object_type = $this->module;
+		$page->fk_object = (string) $this->id;
 
 		if ($pageexists) {
 			$result = $page->update($user);
 		} else {
 			// The alias must not be used yet by another page of the website (only a unique key in database checks it)
 			$tmppage = new WebsitePage($this->db);
-			if ($tmppage->fetch(0, $website->id, $this->ref) > 0) {
-				$this->error = $langs->trans("AutoBlogErrorAliasAlreadyUsed", $this->ref);
+			if ($tmppage->fetch(0, $website->id, $this->pageurl) > 0) {
+				$this->error = $langs->trans("AutoBlogErrorAliasAlreadyUsed", $this->pageurl);
 				$this->db->rollback();
 				return -1;
 			}
 
 			$page->fk_website = $website->id;
 			$page->type_container = 'blogpost';
-			$page->pageurl = $this->ref;
+			$page->pageurl = $this->pageurl;
+			$page->aliasalt = '';	// Field is notnull (same default as web interface)
 			$page->lang = (string) (empty($this->lang) ? $website->lang : $this->lang);
 			$page->htmlheader = '';
 			$page->author_alias = getDolGlobalString('AUTOBLOG_AUTHOR_ALIAS');
@@ -997,10 +1031,70 @@ class BlogTopic extends CommonObject
 	}
 
 	/**
+	 * Load into ->publishedpage the page of the website linked to the topic by its fields object_type and fk_object
+	 *
+	 * @return	int		>0 if a page is found, 0 if not found, <0 if KO
+	 */
+	public function fetchPublishedPage(): int
+	{
+		require_once DOL_DOCUMENT_ROOT.'/website/class/websitepage.class.php';
+
+		$this->publishedpage = new WebsitePage($this->db);
+		if ((int) $this->fk_website <= 0 || empty($this->id)) {
+			return 0;
+		}
+
+		$filter = "(t.object_type:=:'".$this->db->escape($this->module)."') AND (t.fk_object:=:'".((int) $this->id)."')";
+		$pages = $this->publishedpage->fetchAll((string) $this->fk_website, '', '', 1, 0, $filter);
+		if (!is_array($pages)) {
+			$this->setErrorsFromObject($this->publishedpage);
+			return -1;
+		}
+		if (empty($pages)) {
+			return 0;
+		}
+		$this->publishedpage = reset($pages);
+
+		return 1;
+	}
+
+	/**
+	 * Return HTML string to show a field into a page.
+	 * The publication date is completed with the status of the page loaded by fetchPublishedPage(), if it was called.
+	 *
+	 * @param	array{type:string,label:string,enabled:int<0,2>|string,position:int,notnull?:int,visible:int<-6,6>,noteditable?:int,default?:int|string,index?:int,foreignkey?:string,searchall?:int,isameasure?:int,css?:string,csslist?:string,cssview?:string,help?:string,showoncombobox?:int,disabled?:int,arrayofkeyval?:array<int|string,string>,comment?:string,validate?:int,required?:int,picto?:string}	$val	Array of properties of field to show
+	 * @param	string				$key			Key of attribute
+	 * @param	string|int|null		$value			Preselected value to show
+	 * @param	string				$moreparam		To add more parameters on html tag
+	 * @param	string				$keysuffix		Prefix string to add into name and id of field
+	 * @param	string				$keyprefix		Suffix string to add into name and id of field
+	 * @param	mixed				$morecss		Value for CSS to use
+	 * @return	string
+	 */
+	public function showOutputField($val, $key, $value, $moreparam = '', $keysuffix = '', $keyprefix = '', $morecss = '')
+	{
+		global $langs;
+
+		$out = parent::showOutputField($val, $key, $value, $moreparam, $keysuffix, $keyprefix, $morecss);
+
+		// Status Online or Offline of the page, a topic without page is Offline
+		if ($key == 'date_publication' && is_object($this->publishedpage)) {
+			if (empty($value)) {
+				$out = '<span class="opacitymedium">'.$langs->trans("AutoBlogNeverPublished").'</span>';
+			} else {
+				$pagestatus = ($this->publishedpage->id > 0 ? (int) $this->publishedpage->status : WebsitePage::STATUS_DRAFT);
+				$out .= ($out ? ' ' : '').$this->publishedpage->LibStatut($pagestatus, 5);
+			}
+		}
+
+		return $out;
+	}
+
+	/**
 	 * getTooltipContentArray
 	 *
 	 * @param	array<string,string> 	$params 	Params to construct tooltip data
-	 * @return	array{optimize?:string,picto?:string,ref?:string,label?:string}
+	 * @return	array{optimize?:string,picto?:string,ref?:string,pageurl?:string,label?:string}
 	 */
 	public function getTooltipContentArray($params)
 	{
@@ -1015,7 +1109,8 @@ class BlogTopic extends CommonObject
 		if (isset($this->status)) {
 			$datas['picto'] .= ' '.$this->getLibStatut(5);
 		}
-		$datas['ref'] = '<br><b>'.$langs->trans('AutoBlogPageAlias').':</b> '.dol_escape_htmltag((string) $this->ref);
+		$datas['ref'] = '<br><b>'.$langs->trans('Ref').':</b> '.dol_escape_htmltag((string) $this->ref);
+		$datas['pageurl'] = '<br><b>'.$langs->trans('AutoBlogPageAlias').':</b> '.dol_escape_htmltag((string) $this->pageurl);
 		$datas['label'] = '<br><b>'.$langs->trans('Title').':</b> '.dol_escape_htmltag((string) $this->label);
 
 		return $datas;

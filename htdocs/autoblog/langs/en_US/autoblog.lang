@@ -83,6 +83,7 @@ AutoBlogArticleGenerated = Article generated
 AutoBlogArticlePublished = Article published
 AutoBlogGeneratedArticle = Generated article
 AutoBlogPublishedPage = Published page
+AutoBlogNeverPublished = Never published
 AutoBlogEditInWebsiteEditor = Edit in website editor
 AutoBlogWebsiteSetupReminder = Editorial setup of the website, sent to the AI with the instructions of the article
 AutoBlogWebsiteSetupEmpty = No editorial setup defined for this website

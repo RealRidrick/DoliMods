@@ -101,7 +101,7 @@ if (getDolGlobalInt('AUTOBLOG_DEFAULT_WEBSITE') > 0) {
 	$object->fields['fk_website']['default'] = (string) getDolGlobalInt('AUTOBLOG_DEFAULT_WEBSITE');
 }
 // In forms, the page alias comes after the title (from which it is filled) and the website
-$object->fields['ref']['position'] = 35;
+$object->fields['pageurl']['position'] = 35;
 
 if (empty($action) && empty($id) && empty($ref)) {
 	$action = 'view';
@@ -342,7 +342,7 @@ if ($object->id > 0 && (empty($action) || ($action != 'edit' && $action != 'crea
 	// Confirmation to publish the article
 	if ($action == 'publish') {
 		$websitelabel = (isset($websites[$object->fk_website]) ? $websites[$object->fk_website]->ref : '');
-		$text = ($object->fk_websitepage > 0 ? $langs->trans('AutoBlogConfirmUpdatePublication', $websitelabel) : $langs->trans('AutoBlogConfirmPublish', $websitelabel));
+		$text = (!empty($object->date_publication) ? $langs->trans('AutoBlogConfirmUpdatePublication', $websitelabel) : $langs->trans('AutoBlogConfirmPublish', $websitelabel));
 		$formconfirm = $form->formconfirm($_SERVER["PHP_SELF"].'?id='.$object->id, $langs->trans('AutoBlogPublish'), $text, 'confirm_publish', '', 'yes', 1);
 	}
 
@@ -366,10 +366,11 @@ if ($object->id > 0 && (empty($action) || ($action != 'edit' && $action != 'crea
 	// ------------------------------------------------------------
 	$linkback = '<a href="'.dol_buildpath('/autoblog/blogtopic_list.php', 1).'?restore_lastsearch_values=1">'.$langs->trans("BackToList").'</a>';
 
-	$morehtmlref = '';
+	// The title is shown under the ref
+	$morehtmlref = '<div class="refidno">'.dolPrintHTML((string) $object->label).'</div>';
 
-	// The title is shown as ref of the banner, the navigation stays on the page alias (field ref)
-	dol_banner_tab($object, 'ref', $linkback, 1, 'ref', 'label', $morehtmlref);
+	// The navigation is on the ID (the ref is the ID as a string)
+	dol_banner_tab($object, 'id', $linkback, 1, 'rowid', 'ref', $morehtmlref);
 
 	print '<div class="fichecenter">';
 	print '<div class="fichehalfleft">';
@@ -381,17 +382,19 @@ if ($object->id > 0 && (empty($action) || ($action != 'edit' && $action != 'crea
 	$object->fields['instructions']['position'] = 450;
 	// With this type, the website is shown with Website::getNomUrl() (the forms keep the combo list of websites)
 	$object->fields['fk_website']['type'] = 'integer:Website:website/class/website.class.php';
+	// Load the page linked to the topic, so its status is shown with the publication date
+	$object->fetchPublishedPage();
 
-	// The title and the page alias are shown first by us, because the core template never shows the field ref
+	// The title and the page alias are shown first by us
 	print '<tr class="field_label"><td class="titlefieldmiddle fieldname_label">';
 	print $form->editfieldkey($langs->trans($object->fields['label']['label']), 'label', $object->label, $object, $permissiontoadd, 'string');
 	print '</td><td class="valuefield fieldname_label">';
 	print $form->editfieldval($langs->trans($object->fields['label']['label']), 'label', $object->label, $object, $permissiontoadd, 'string');
 	print '</td></tr>';
-	print '<tr class="field_ref"><td class="titlefieldmiddle fieldname_ref">'.$form->textwithpicto($langs->trans("AutoBlogPageAlias"), $langs->trans("AutoBlogPageAliasHelp")).'</td>';
-	print '<td class="valuefield fieldname_ref">'.dol_escape_htmltag((string) $object->ref).'</td></tr>';
+	print '<tr class="field_pageurl"><td class="titlefieldmiddle fieldname_pageurl">'.$form->textwithpicto($langs->trans("AutoBlogPageAlias"), $langs->trans("AutoBlogPageAliasHelp")).'</td>';
+	print '<td class="valuefield fieldname_pageurl">'.dol_escape_htmltag((string) $object->pageurl).'</td></tr>';
 	$allfields = $object->fields;
-	unset($object->fields['label']);
+	unset($object->fields['label'], $object->fields['pageurl']);
 	include DOL_DOCUMENT_ROOT.'/core/tpl/commonfields_view.tpl.php';
 	$object->fields = $allfields;
 
@@ -400,7 +403,7 @@ if ($object->id > 0 && (empty($action) || ($action != 'edit' && $action != 'crea
 	if ($object->fk_websitepage > 0 && $websiteref) {
 		print '<tr><td class="titlefield">'.$langs->trans("AutoBlogPublishedPage").'</td><td>';
 		print '<a href="'.DOL_URL_ROOT.'/website/index.php?website='.urlencode($websiteref).'&pageid='.((int) $object->fk_websitepage).'">'.img_picto('', 'edit', 'class="pictofixedwidth"').$langs->trans("AutoBlogEditInWebsiteEditor").'</a>';
-		print ' &nbsp; <a href="'.DOL_URL_ROOT.'/public/website/index.php?website='.urlencode($websiteref).'&pageref='.urlencode((string) $object->ref).'" target="_blank" rel="noopener noreferrer">'.img_picto('', 'globe', 'class="pictofixedwidth"').$langs->trans("ViewPageInNewTab").'</a>';
+		print ' &nbsp; <a href="'.DOL_URL_ROOT.'/public/website/index.php?website='.urlencode($websiteref).'&pageref='.urlencode((string) $object->pageurl).'" target="_blank" rel="noopener noreferrer">'.img_picto('', 'globe', 'class="pictofixedwidth"').$langs->trans("ViewPageInNewTab").'</a>';
 		print '</td></tr>';
 	}
 
@@ -476,19 +479,22 @@ if ($object->id > 0 && (empty($action) || ($action != 'edit' && $action != 'crea
 				print dolGetButtonAction('', $langs->trans('AutoBlogGenerateNow'), 'default', $urlcard.'&action=generate&token='.newToken(), '', $permissiontoadd);
 			}
 
+			// Regenerate: append instructions and generate again
 			if (in_array($object->status, array($object::STATUS_GENERATED, $object::STATUS_PUBLISHED))) {
-				// Regenerate: append instructions and generate again
 				print dolGetButtonAction('', $langs->trans('AutoBlogCorrect'), 'default', $urlcard.'&action=correct&token='.newToken(), '', $permissiontoadd);
+			}
 
-				// Edit the article manually
-				if (!empty($object->content)) {
-					print dolGetButtonAction('', $langs->trans('AutoBlogEditArticle'), 'default', $urlcard.'&action=editcontent&token='.newToken().'#autoblogarticle', '', $permissiontoadd);
-				}
+			// A draft that already has a generated content can also be edited and published
+			$draftwithcontent = ($object->status == $object::STATUS_DRAFT && !empty($object->content));
+
+			// Edit the article manually
+			if ((in_array($object->status, array($object::STATUS_GENERATED, $object::STATUS_PUBLISHED)) && !empty($object->content)) || $draftwithcontent) {
+				print dolGetButtonAction('', $langs->trans('AutoBlogEditArticle'), 'default', $urlcard.'&action=editcontent&token='.newToken().'#autoblogarticle', '', $permissiontoadd);
 			}
 
 			// Publish or update the publication
-			if ($object->status == $object::STATUS_GENERATED) {
-				$labelpublish = ($object->fk_websitepage > 0 ? $langs->trans('AutoBlogUpdatePublication') : $langs->trans('AutoBlogPublish'));
+			if ($object->status == $object::STATUS_GENERATED || $draftwithcontent) {
+				$labelpublish = (!empty($object->date_publication) ? $langs->trans('AutoBlogUpdatePublication') : $langs->trans('AutoBlogPublish'));
 				print dolGetButtonAction($permissiontopublish ? '' : $langs->trans('NotEnoughPermissions'), $labelpublish, 'default', $urlcard.'&action=publish&token='.newToken(), '', $permissiontopublish);
 			}
 
